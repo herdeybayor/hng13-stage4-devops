@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+"""
+vpcctl - Virtual Private Cloud Control CLI
+A tool to create and manage virtual VPCs on Linux using network namespaces
+"""
+
+import argparse
+import sys
+import os
+
+# Add lib directory to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+
+from vpc_manager import VPCManager
+from subnet_manager import SubnetManager
+from nat_manager import NATManager
+from peering_manager import PeeringManager
+from firewall_manager import FirewallManager
+from logger import setup_logger
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='VPC Control - Manage Virtual Private Clouds on Linux',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Create a VPC
+  sudo vpcctl create-vpc --name my-vpc --cidr 10.0.0.0/16
+
+  # Add a public subnet
+  sudo vpcctl create-subnet --vpc my-vpc --name public --cidr 10.0.1.0/24 --type public
+
+  # Add a private subnet
+  sudo vpcctl create-subnet --vpc my-vpc --name private --cidr 10.0.2.0/24 --type private
+
+  # List all VPCs
+  sudo vpcctl list-vpcs
+
+  # Deploy a test application
+  sudo vpcctl deploy-app --vpc my-vpc --subnet public --port 8080
+
+  # Peer two VPCs
+  sudo vpcctl peer-vpcs --vpc1 vpc-a --vpc2 vpc-b
+
+  # Apply firewall policy
+  sudo vpcctl apply-policy --vpc my-vpc --subnet public --policy policies/web-policy.json
+
+  # Delete a VPC
+  sudo vpcctl delete-vpc --name my-vpc
+        """
+    )
+
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+
+    # Create VPC
+    create_vpc = subparsers.add_parser('create-vpc', help='Create a new VPC')
+    create_vpc.add_argument('--name', required=True, help='VPC name')
+    create_vpc.add_argument('--cidr', required=True, help='CIDR block (e.g., 10.0.0.0/16)')
+    create_vpc.add_argument('--interface', default='eth0', help='Internet interface (default: eth0)')
+
+    # Delete VPC
+    delete_vpc = subparsers.add_parser('delete-vpc', help='Delete a VPC')
+    delete_vpc.add_argument('--name', required=True, help='VPC name')
+
+    # List VPCs
+    list_vpcs = subparsers.add_parser('list-vpcs', help='List all VPCs')
+
+    # Create Subnet
+    create_subnet = subparsers.add_parser('create-subnet', help='Create a subnet in a VPC')
+    create_subnet.add_argument('--vpc', required=True, help='VPC name')
+    create_subnet.add_argument('--name', required=True, help='Subnet name')
+    create_subnet.add_argument('--cidr', required=True, help='Subnet CIDR (e.g., 10.0.1.0/24)')
+    create_subnet.add_argument('--type', choices=['public', 'private'], required=True, help='Subnet type')
+
+    # Delete Subnet
+    delete_subnet = subparsers.add_parser('delete-subnet', help='Delete a subnet')
+    delete_subnet.add_argument('--vpc', required=True, help='VPC name')
+    delete_subnet.add_argument('--name', required=True, help='Subnet name')
+
+    # List Subnets
+    list_subnets = subparsers.add_parser('list-subnets', help='List subnets in a VPC')
+    list_subnets.add_argument('--vpc', required=True, help='VPC name')
+
+    # Deploy Application
+    deploy_app = subparsers.add_parser('deploy-app', help='Deploy a test application in a subnet')
+    deploy_app.add_argument('--vpc', required=True, help='VPC name')
+    deploy_app.add_argument('--subnet', required=True, help='Subnet name')
+    deploy_app.add_argument('--port', type=int, default=8080, help='Port to run on (default: 8080)')
+    deploy_app.add_argument('--type', choices=['nginx', 'python'], default='python', help='App type')
+
+    # Stop Application
+    stop_app = subparsers.add_parser('stop-app', help='Stop application in a subnet')
+    stop_app.add_argument('--vpc', required=True, help='VPC name')
+    stop_app.add_argument('--subnet', required=True, help='Subnet name')
+
+    # Peer VPCs
+    peer_vpcs = subparsers.add_parser('peer-vpcs', help='Create peering between two VPCs')
+    peer_vpcs.add_argument('--vpc1', required=True, help='First VPC name')
+    peer_vpcs.add_argument('--vpc2', required=True, help='Second VPC name')
+
+    # Unpeer VPCs
+    unpeer_vpcs = subparsers.add_parser('unpeer-vpcs', help='Remove peering between two VPCs')
+    unpeer_vpcs.add_argument('--vpc1', required=True, help='First VPC name')
+    unpeer_vpcs.add_argument('--vpc2', required=True, help='Second VPC name')
+
+    # Apply firewall policy
+    apply_policy = subparsers.add_parser('apply-policy', help='Apply firewall policy to a subnet')
+    apply_policy.add_argument('--vpc', required=True, help='VPC name')
+    apply_policy.add_argument('--subnet', required=True, help='Subnet name')
+    apply_policy.add_argument('--policy', required=True, help='Path to policy JSON file')
+
+    # Test connectivity
+    test_conn = subparsers.add_parser('test-connectivity', help='Test connectivity between subnets')
+    test_conn.add_argument('--vpc', required=True, help='VPC name')
+    test_conn.add_argument('--from-subnet', required=True, help='Source subnet')
+    test_conn.add_argument('--to-subnet', required=True, help='Destination subnet')
+
+    # Cleanup all
+    cleanup = subparsers.add_parser('cleanup-all', help='Remove all VPCs and resources')
+
+    args = parser.parse_args()
+
+    # Check if running as root
+    if os.geteuid() != 0:
+        print("Error: This script must be run as root (use sudo)")
+        sys.exit(1)
+
+    # Setup logger
+    logger = setup_logger()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    # Initialize managers
+    vpc_mgr = VPCManager(logger)
+    subnet_mgr = SubnetManager(logger)
+    nat_mgr = NATManager(logger)
+    peering_mgr = PeeringManager(logger)
+    firewall_mgr = FirewallManager(logger)
+
+    try:
+        if args.command == 'create-vpc':
+            vpc_mgr.create_vpc(args.name, args.cidr, args.interface)
+            
+        elif args.command == 'delete-vpc':
+            vpc_mgr.delete_vpc(args.name)
+            
+        elif args.command == 'list-vpcs':
+            vpc_mgr.list_vpcs()
+            
+        elif args.command == 'create-subnet':
+            subnet_mgr.create_subnet(args.vpc, args.name, args.cidr, args.type)
+            
+        elif args.command == 'delete-subnet':
+            subnet_mgr.delete_subnet(args.vpc, args.name)
+            
+        elif args.command == 'list-subnets':
+            subnet_mgr.list_subnets(args.vpc)
+            
+        elif args.command == 'deploy-app':
+            subnet_mgr.deploy_app(args.vpc, args.subnet, args.port, args.type)
+            
+        elif args.command == 'stop-app':
+            subnet_mgr.stop_app(args.vpc, args.subnet)
+            
+        elif args.command == 'peer-vpcs':
+            peering_mgr.peer_vpcs(args.vpc1, args.vpc2)
+            
+        elif args.command == 'unpeer-vpcs':
+            peering_mgr.unpeer_vpcs(args.vpc1, args.vpc2)
+            
+        elif args.command == 'apply-policy':
+            firewall_mgr.apply_policy(args.vpc, args.subnet, args.policy)
+            
+        elif args.command == 'test-connectivity':
+            subnet_mgr.test_connectivity(args.vpc, args.from_subnet, args.to_subnet)
+            
+        elif args.command == 'cleanup-all':
+            vpc_mgr.cleanup_all()
+
+    except Exception as e:
+        logger.error(f"Error: {str(e)}")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
+

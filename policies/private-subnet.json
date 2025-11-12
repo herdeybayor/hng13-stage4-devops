@@ -1,0 +1,27 @@
+{
+  "subnet": "10.0.3.0/24",
+  "description": "Private subnet policy - only internal traffic allowed",
+  "ingress": [
+    {
+      "port": "*",
+      "protocol": "tcp",
+      "action": "allow",
+      "source": "10.0.0.0/16"
+    },
+    {
+      "port": "*",
+      "protocol": "tcp",
+      "action": "deny",
+      "source": "0.0.0.0/0"
+    }
+  ],
+  "egress": [
+    {
+      "port": "*",
+      "protocol": "tcp",
+      "action": "allow",
+      "destination": "10.0.0.0/16"
+    }
+  ]
+}
+

@@ -1,0 +1,27 @@
+{
+  "subnet": "10.0.2.0/24",
+  "description": "Secure server policy - blocks SSH, allows limited access",
+  "ingress": [
+    {
+      "port": 22,
+      "protocol": "tcp",
+      "action": "deny",
+      "source": "0.0.0.0/0"
+    },
+    {
+      "port": 8080,
+      "protocol": "tcp",
+      "action": "allow",
+      "source": "10.0.0.0/16"
+    }
+  ],
+  "egress": [
+    {
+      "port": "*",
+      "protocol": "tcp",
+      "action": "allow",
+      "destination": "0.0.0.0/0"
+    }
+  ]
+}
+
