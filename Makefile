@@ -11,15 +11,27 @@ help:
 	@echo ""
 
 install:
-	@echo "Setting up vpcctl..."
+	@echo "Installing vpcctl system-wide..."
+	@sudo ./install.sh
+
+uninstall:
+	@echo "Uninstalling vpcctl..."
+	@sudo ./uninstall.sh
+
+local-setup:
+	@echo "Setting up vpcctl for local development..."
 	@chmod +x vpcctl
 	@chmod +x cleanup.sh
 	@chmod +x tests/run_tests.sh
+	@chmod +x install.sh
+	@chmod +x uninstall.sh
 	@mkdir -p /var/lib/vpcctl
 	@mkdir -p /var/log/vpcctl
-	@echo "✓ Installation complete!"
+	@echo "✓ Local setup complete!"
 	@echo ""
 	@echo "Usage: sudo ./vpcctl --help"
+	@echo ""
+	@echo "To install system-wide: sudo make install"
 
 test:
 	@echo "Running test scenarios..."

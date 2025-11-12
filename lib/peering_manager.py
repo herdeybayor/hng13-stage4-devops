@@ -39,8 +39,12 @@ class PeeringManager:
             raise ValueError(f"VPC CIDRs overlap: {vpc1['cidr']} and {vpc2['cidr']}")
         
         # Create veth pair to connect bridges
-        veth1 = f"peer-{vpc1_name}-{vpc2_name}"
-        veth2 = f"peer-{vpc2_name}-{vpc1_name}"
+        # Note: Linux interface names must be <= 15 characters
+        import hashlib
+        peer_hash = hashlib.md5(f"{vpc1_name}-{vpc2_name}".encode()).hexdigest()[:6]
+        
+        veth1 = f"peer1-{peer_hash}"
+        veth2 = f"peer2-{peer_hash}"
         
         self.logger.info(f"Creating veth pair: {veth1} <-> {veth2}")
         run_command(f"ip link add {veth1} type veth peer name {veth2}")

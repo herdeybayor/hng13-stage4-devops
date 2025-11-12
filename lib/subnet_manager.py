@@ -48,14 +48,23 @@ class SubnetManager:
         run_command(f"ip netns add {ns_name}")
         
         # Create veth pair
-        veth_host = f"veth-{vpc_name}-{subnet_name}"
-        veth_ns = f"eth0"
+        # Note: Linux interface names must be <= 15 characters
+        # Use short names: veth for host side, vpeer for namespace side
+        import hashlib
+        name_hash = hashlib.md5(f"{vpc_name}-{subnet_name}".encode()).hexdigest()[:6]
+        
+        veth_host = f"veth-{name_hash}"
+        veth_ns = f"vpeer-{name_hash}"
         
         self.logger.info(f"Creating veth pair: {veth_host} <-> {veth_ns}")
         run_command(f"ip link add {veth_host} type veth peer name {veth_ns}")
         
         # Move one end to namespace
         run_command(f"ip link set {veth_ns} netns {ns_name}")
+        
+        # Rename interface inside namespace to eth0 for simplicity
+        run_command(f"ip netns exec {ns_name} ip link set {veth_ns} name eth0")
+        veth_ns_renamed = "eth0"
         
         # Attach host end to bridge
         bridge_name = vpc['bridge']
@@ -65,18 +74,27 @@ class SubnetManager:
         
         # Configure namespace interface
         ns_ip = get_namespace_ip(cidr)
-        self.logger.info(f"Configuring namespace interface with IP: {ns_ip}")
-        run_command(f"ip netns exec {ns_name} ip addr add {ns_ip}/24 dev {veth_ns}")
-        run_command(f"ip netns exec {ns_name} ip link set {veth_ns} up")
+        # Get the correct prefix length from CIDR
+        prefix_len = cidr.split('/')[1]
+        self.logger.info(f"Configuring namespace interface with IP: {ns_ip}/{prefix_len}")
+        run_command(f"ip netns exec {ns_name} ip addr add {ns_ip}/{prefix_len} dev {veth_ns_renamed}")
+        run_command(f"ip netns exec {ns_name} ip link set {veth_ns_renamed} up")
         run_command(f"ip netns exec {ns_name} ip link set lo up")
         
-        # Add default route
+        # Add route to VPC network through the bridge
+        # The bridge has the first IP in the VPC CIDR range
         import ipaddress
-        network = ipaddress.ip_network(cidr, strict=False)
-        gateway_ip = str(list(network.hosts())[0])
+        vpc_network = ipaddress.ip_network(vpc['cidr'], strict=False)
+        gateway_ip = str(list(vpc_network.hosts())[0])
         
+        # Add route for the entire VPC CIDR through the bridge using onlink
+        # onlink allows gateway to be outside the subnet
+        self.logger.info(f"Adding route to VPC {vpc['cidr']} via {gateway_ip}")
+        run_command(f"ip netns exec {ns_name} ip route add {vpc['cidr']} via {gateway_ip} dev {veth_ns_renamed} onlink", check=False)
+        
+        # Add default route for everything else
         self.logger.info(f"Setting default gateway: {gateway_ip}")
-        run_command(f"ip netns exec {ns_name} ip route add default via {gateway_ip}")
+        run_command(f"ip netns exec {ns_name} ip route add default via {gateway_ip} dev {veth_ns_renamed} onlink", check=False)
         
         # Enable forwarding in namespace
         run_command(f"ip netns exec {ns_name} sysctl -w net.ipv4.ip_forward=1")
@@ -91,7 +109,7 @@ class SubnetManager:
             'type': subnet_type,
             'namespace': ns_name,
             'veth_host': veth_host,
-            'veth_ns': veth_ns,
+            'veth_ns': veth_ns_renamed,
             'ip': ns_ip
         }
         

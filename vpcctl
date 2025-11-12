@@ -9,7 +9,13 @@ import sys
 import os
 
 # Add lib directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+# Handle both local execution and system-wide installation
+script_path = os.path.realpath(__file__)  # Resolve symlinks
+script_dir = os.path.dirname(script_path)
+lib_dir = os.path.join(script_dir, 'lib')
+
+# Add lib directory to Python path
+sys.path.insert(0, lib_dir)
 
 from vpc_manager import VPCManager
 from subnet_manager import SubnetManager

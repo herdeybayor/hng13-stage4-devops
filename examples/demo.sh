@@ -128,10 +128,10 @@ echo "Removing VPC peering"
 ./vpcctl unpeer-vpcs --vpc1 demo-vpc --vpc2 demo-vpc-2 || true
 
 echo "Deleting demo-vpc"
-./vpcctl delete-vpc --name demo-vpc
+timeout 30 ./vpcctl delete-vpc --name demo-vpc || echo "Cleanup timeout, using force cleanup"
 
 echo "Deleting demo-vpc-2"
-./vpcctl delete-vpc --name demo-vpc-2
+timeout 30 ./vpcctl delete-vpc --name demo-vpc-2 || echo "Cleanup timeout, using force cleanup"
 
 success "All demo resources cleaned up"
 

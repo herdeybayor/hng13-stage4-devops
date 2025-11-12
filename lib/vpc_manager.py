@@ -36,7 +36,23 @@ class VPCManager:
         
         self.logger.info(f"Creating bridge: {bridge_name}")
         run_command(f"ip link add {bridge_name} type bridge")
+        
+        # Assign IP to bridge (first IP in CIDR range) so it can route
+        import ipaddress
+        network = ipaddress.ip_network(cidr, strict=False)
+        bridge_ip = str(list(network.hosts())[0])
+        
+        self.logger.info(f"Assigning IP {bridge_ip} to bridge")
+        run_command(f"ip addr add {bridge_ip}/16 dev {bridge_name}")
         run_command(f"ip link set {bridge_name} up")
+        
+        # Enable IP forwarding
+        run_command("sysctl -w net.ipv4.ip_forward=1")
+        
+        # Allow forwarding on the bridge
+        run_command(f"iptables -A FORWARD -i {bridge_name} -o {bridge_name} -j ACCEPT", check=False)
+        run_command(f"iptables -A FORWARD -i {bridge_name} -j ACCEPT", check=False)
+        run_command(f"iptables -A FORWARD -o {bridge_name} -j ACCEPT", check=False)
         
         # Store VPC info
         state['vpcs'][name] = {

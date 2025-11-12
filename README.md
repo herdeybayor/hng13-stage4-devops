@@ -70,11 +70,11 @@ VPC Control (`vpcctl`) allows you to:
 │  │          └─────────┬────────┘                     │
 │  │                    │                              │
 │  └────────────────────┼──────────────────────────────┘
-│                       │                                
-│                 ┌─────▼──────┐                        
-│                 │ NAT/iptables│                       
-│                 └─────┬──────┘                        
-│                       │                               
+│                       │
+│                 ┌─────▼──────┐
+│                 │ NAT/iptables│
+│                 └─────┬──────┘
+│                       │
 └───────────────────────┼───────────────────────────────┘
                         │
                   ┌─────▼──────┐
@@ -130,6 +130,7 @@ make install
 ```
 
 This will:
+
 - Make scripts executable
 - Create necessary directories
 - Set up logging
@@ -171,11 +172,13 @@ sudo ./vpcctl create-vpc --name <vpc-name> --cidr <cidr-block> [--interface <int
 ```
 
 **Options:**
+
 - `--name`: Unique name for the VPC
 - `--cidr`: IP address range in CIDR notation (e.g., 10.0.0.0/16)
 - `--interface`: Host's internet interface (default: eth0)
 
 **Example:**
+
 ```bash
 sudo ./vpcctl create-vpc --name prod-vpc --cidr 10.0.0.0/16 --interface eth0
 ```
@@ -187,12 +190,14 @@ sudo ./vpcctl create-subnet --vpc <vpc-name> --name <subnet-name> --cidr <cidr> 
 ```
 
 **Options:**
+
 - `--vpc`: VPC name
 - `--name`: Subnet name
 - `--cidr`: Subnet CIDR (must be within VPC CIDR)
 - `--type`: `public` (with NAT) or `private` (internal only)
 
 **Example:**
+
 ```bash
 sudo ./vpcctl create-subnet --vpc prod-vpc --name web-tier --cidr 10.0.1.0/24 --type public
 sudo ./vpcctl create-subnet --vpc prod-vpc --name db-tier --cidr 10.0.2.0/24 --type private
@@ -205,6 +210,7 @@ sudo ./vpcctl deploy-app --vpc <vpc-name> --subnet <subnet-name> --port <port> [
 ```
 
 **Example:**
+
 ```bash
 sudo ./vpcctl deploy-app --vpc prod-vpc --subnet web-tier --port 8080 --type python
 ```
@@ -216,6 +222,7 @@ sudo ./vpcctl apply-policy --vpc <vpc-name> --subnet <subnet-name> --policy <pol
 ```
 
 **Example:**
+
 ```bash
 sudo ./vpcctl apply-policy --vpc prod-vpc --subnet web-tier --policy policies/web-server.json
 ```
@@ -231,6 +238,7 @@ sudo ./vpcctl unpeer-vpcs --vpc1 <vpc1-name> --vpc2 <vpc2-name>
 ```
 
 **Example:**
+
 ```bash
 sudo ./vpcctl peer-vpcs --vpc1 prod-vpc --vpc2 dev-vpc
 ```
@@ -277,6 +285,7 @@ sudo ./tests/run_tests.sh
 ```
 
 The test suite validates:
+
 - ✅ VPC creation and deletion
 - ✅ Subnet management (public and private)
 - ✅ Application deployment
@@ -386,41 +395,54 @@ sudo ./vpcctl apply-policy --vpc my-vpc --subnet public --policy policies/custom
 ### Common Issues
 
 **1. Permission Denied**
+
 ```bash
 Error: This script must be run as root (use sudo)
 ```
+
 Solution: Always use `sudo` when running vpcctl commands.
 
 **2. Network Namespace Already Exists**
+
 ```bash
 Error: Namespace ns-vpc-subnet already exists
 ```
+
 Solution: Clean up existing resources:
+
 ```bash
 sudo ./cleanup.sh
 ```
 
 **3. CIDR Overlap**
+
 ```bash
 Error: Subnet CIDR is not within VPC CIDR
 ```
+
 Solution: Ensure subnet CIDR is a subset of VPC CIDR.
 
 **4. No Internet Connectivity**
+
 ```bash
 Error: Cannot reach internet from public subnet
 ```
+
 Solution: Check your interface name and ensure IP forwarding is enabled:
+
 ```bash
 sudo sysctl -w net.ipv4.ip_forward=1
 sudo iptables -L -t nat
 ```
 
 **5. Application Not Starting**
+
 ```bash
 Warning: Application deployment may have issues
 ```
+
 Solution: Check logs:
+
 ```bash
 tail -f /var/log/vpcctl/vpcctl-*.log
 ```
@@ -451,6 +473,7 @@ sudo ip netns exec ns-vpc-subnet curl http://10.0.1.2:8080
 All operations are logged to `/var/log/vpcctl/vpcctl-YYYYMMDD.log`
 
 View logs:
+
 ```bash
 sudo tail -f /var/log/vpcctl/vpcctl-$(date +%Y%m%d).log
 ```
@@ -458,6 +481,7 @@ sudo tail -f /var/log/vpcctl/vpcctl-$(date +%Y%m%d).log
 ## 📊 Testing Scenarios
 
 ### Scenario 1: Intra-VPC Communication
+
 **Expected**: Subnets within the same VPC can communicate
 
 ```bash
@@ -466,6 +490,7 @@ sudo ./vpcctl test-connectivity --vpc my-vpc --from-subnet public --to-subnet pr
 ```
 
 ### Scenario 2: VPC Isolation
+
 **Expected**: Different VPCs cannot communicate without peering
 
 ```bash
@@ -475,6 +500,7 @@ sudo ip netns exec ns-vpc1-subnet ping <vpc2-ip>
 ```
 
 ### Scenario 3: Internet Access
+
 **Expected**: Public subnets can reach internet, private cannot
 
 ```bash
@@ -488,6 +514,7 @@ sudo ip netns exec ns-my-vpc-private ping -c 3 8.8.8.8
 ```
 
 ### Scenario 4: Peering
+
 **Expected**: After peering, VPCs can communicate
 
 ```bash
@@ -497,6 +524,7 @@ sudo ip netns exec ns-vpc-a-subnet ping <vpc-b-ip>
 ```
 
 ### Scenario 5: Firewall
+
 **Expected**: Traffic follows policy rules
 
 ```bash
@@ -542,6 +570,7 @@ hng13-stage4-devops/
 VPC state is stored in `/var/lib/vpcctl/state.json`
 
 Example state file:
+
 ```json
 {
   "vpcs": {
@@ -570,17 +599,20 @@ Example state file:
 This project demonstrates:
 
 1. **Linux Networking Fundamentals**
+
    - Network namespaces for isolation
    - Virtual ethernet (veth) pairs
    - Linux bridges as virtual switches
    - Routing tables and forwarding
 
 2. **Network Address Translation (NAT)**
+
    - MASQUERADE for internet access
    - Port forwarding concepts
    - Public vs private subnets
 
 3. **Firewall & Security**
+
    - iptables chains and rules
    - Stateful packet filtering
    - Security group concepts
@@ -612,6 +644,7 @@ Created for HNG13 Stage 4 DevOps Challenge
 ## 📞 Support
 
 For issues or questions:
+
 - Check the troubleshooting section
 - Review logs in `/var/log/vpcctl/`
 - Open an issue on GitHub
@@ -619,4 +652,3 @@ For issues or questions:
 ---
 
 **Note**: This is an educational project. For production use, consider using established tools like Kubernetes, Docker networking, or cloud provider VPCs.
-
