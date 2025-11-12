@@ -62,6 +62,7 @@ class PeeringManager:
         run_command(f"ip link set {veth2} up")
         
         # Add routes for each subnet in the VPCs
+        # This creates a full mesh - might want to make this configurable later
         for subnet1_name, subnet1_data in vpc1['subnets'].items():
             for subnet2_name, subnet2_data in vpc2['subnets'].items():
                 # Add route from subnet1 to subnet2

@@ -81,6 +81,7 @@ class FirewallManager:
 
     def _apply_ingress_rule(self, ns_name, rule):
         """Apply a single ingress rule"""
+        # TODO: Add support for port ranges (e.g., 8000-9000)
         port = rule.get('port', '*')
         protocol = rule.get('protocol', 'tcp')
         action = rule.get('action', 'allow').upper()

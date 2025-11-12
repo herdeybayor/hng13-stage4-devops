@@ -118,11 +118,13 @@ class VPCManager:
         veth_host = subnet['veth_host']
         
         # Stop any running apps - be more aggressive
+        # TODO: Maybe add a retry mechanism here? Sometimes processes don't die immediately
         self.logger.info(f"Stopping applications in subnet {subnet_name}")
         run_command(f"ip netns pids {ns_name} | xargs -r kill -9", check=False)
         run_command(f"pkill -9 -f 'ip netns exec {ns_name}'", check=False)
         
         # Give processes a moment to die
+        # NOTE: 0.5s seems to work well, but might need tuning for slower systems
         import time
         time.sleep(0.5)
         

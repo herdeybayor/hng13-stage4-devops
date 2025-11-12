@@ -633,7 +633,11 @@ This project is licensed under the MIT License.
 
 ## 👥 Author
 
-Created for HNG13 Stage 4 DevOps Challenge
+**Sherifdeen Adebayo** ([@herdeybayor](https://github.com/herdeybayor))
+
+Created for HNG13 Stage 4 DevOps Challenge - November 2024
+
+This was my first deep dive into Linux networking primitives. I learned a ton building this!
 
 ## 🙏 Acknowledgments
 

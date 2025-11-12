@@ -1,5 +1,8 @@
 """
 Subnet Manager - Handles subnet creation and management
+
+Note: The routing setup here took me a while to figure out.
+The key was using the 'onlink' flag to allow gateways outside the subnet.
 """
 
 import os
@@ -48,8 +51,9 @@ class SubnetManager:
         run_command(f"ip netns add {ns_name}")
         
         # Create veth pair
-        # Note: Linux interface names must be <= 15 characters
-        # Use short names: veth for host side, vpeer for namespace side
+        # IMPORTANT: Linux has a 15-char limit for interface names (IFNAMSIZ)
+        # Learned this the hard way when long names like "veth-demo-vpc-public" failed
+        # Now using MD5 hash to keep names short but unique
         import hashlib
         name_hash = hashlib.md5(f"{vpc_name}-{subnet_name}".encode()).hexdigest()[:6]
         
@@ -87,8 +91,9 @@ class SubnetManager:
         vpc_network = ipaddress.ip_network(vpc['cidr'], strict=False)
         gateway_ip = str(list(vpc_network.hosts())[0])
         
-        # Add route for the entire VPC CIDR through the bridge using onlink
-        # onlink allows gateway to be outside the subnet
+        # Add route for the entire VPC CIDR through the bridge
+        # The 'onlink' flag here is crucial - it tells the kernel the gateway is reachable
+        # even though it's not in the same subnet. Without this, you get "Network unreachable"
         self.logger.info(f"Adding route to VPC {vpc['cidr']} via {gateway_ip}")
         run_command(f"ip netns exec {ns_name} ip route add {vpc['cidr']} via {gateway_ip} dev {veth_ns_renamed} onlink", check=False)
         
