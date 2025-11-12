@@ -8,6 +8,13 @@ env/
 venv/
 *.egg-info/
 
+# Development files
+HUMANIZE_CHECKLIST.md
+GIT_GUIDE.md
+SETUP-ORBSTACK.md
+RUN-IN-ORBSTACK.sh
+*.plan.md
+
 # Logs
 *.log
 logs/

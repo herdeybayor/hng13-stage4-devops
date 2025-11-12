@@ -639,6 +639,8 @@ Created for HNG13 Stage 4 DevOps Challenge - November 2024
 
 This was my first deep dive into Linux networking primitives. I learned a ton building this!
 
+Read the full blog post: [Building Your Own VPC on Linux: A DevOps Love Story](https://dev.to/herdeybayor/building-your-own-vpc-on-linux-a-devops-love-story-4ca1)
+
 ## 🙏 Acknowledgments
 
 - Linux networking documentation
